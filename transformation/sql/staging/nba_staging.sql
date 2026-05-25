@@ -1,0 +1,49 @@
+-- ============================================================
+-- NBA Staging Layer (Silver)
+-- Promotes and deduplicates RAW data into STAGING schema.
+-- ============================================================
+
+-- Games
+CREATE TABLE IF NOT EXISTS SPORT_ANALYTICS.STAGING.NBA_GAMES AS
+SELECT * FROM SPORT_ANALYTICS.RAW.NBA_GAMES WHERE 1=0;
+
+MERGE INTO SPORT_ANALYTICS.STAGING.NBA_GAMES AS tgt
+USING (
+    SELECT *,
+           ROW_NUMBER() OVER (PARTITION BY GAME_ID ORDER BY _LOADED_AT DESC) AS rn
+    FROM SPORT_ANALYTICS.RAW.NBA_GAMES
+) AS src
+ON tgt.GAME_ID = src.GAME_ID
+WHEN MATCHED AND src.rn = 1 THEN
+    UPDATE SET
+        tgt.HOME_SCORE    = src.HOME_SCORE,
+        tgt.AWAY_SCORE    = src.AWAY_SCORE,
+        tgt.IS_FINAL      = src.IS_FINAL,
+        tgt._LOADED_AT    = src._LOADED_AT
+WHEN NOT MATCHED AND src.rn = 1 THEN
+    INSERT VALUES (
+        src.GAME_ID, src.GAME_DATE, src.SEASON, src.STATUS,
+        src.PERIOD, src.IS_POSTSEASON,
+        src.HOME_TEAM_ID, src.HOME_TEAM_NAME, src.HOME_TEAM_ABBR,
+        src.HOME_CONFERENCE, src.HOME_DIVISION,
+        src.AWAY_TEAM_ID, src.AWAY_TEAM_NAME, src.AWAY_TEAM_ABBR,
+        src.HOME_SCORE, src.AWAY_SCORE,
+        src.HOME_WIN, src.TOTAL_POINTS, src.POINT_DIFF, src.IS_FINAL,
+        src._LOADED_AT, src._SOURCE
+    );
+
+-- Player Stats
+CREATE TABLE IF NOT EXISTS SPORT_ANALYTICS.STAGING.NBA_PLAYER_STATS AS
+SELECT * FROM SPORT_ANALYTICS.RAW.NBA_PLAYER_STATS WHERE 1=0;
+
+MERGE INTO SPORT_ANALYTICS.STAGING.NBA_PLAYER_STATS AS tgt
+USING (
+    SELECT *,
+           ROW_NUMBER() OVER (PARTITION BY STAT_ID ORDER BY _LOADED_AT DESC) AS rn
+    FROM SPORT_ANALYTICS.RAW.NBA_PLAYER_STATS
+) AS src
+ON tgt.STAT_ID = src.STAT_ID
+WHEN MATCHED AND src.rn = 1 THEN
+    UPDATE SET tgt._LOADED_AT = src._LOADED_AT
+WHEN NOT MATCHED AND src.rn = 1 THEN
+    INSERT SELECT * EXCLUDE (rn) FROM src;
