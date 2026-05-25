@@ -1,3 +1,4 @@
+![CI](https://github.com/ikel0/sport-analytics/actions/workflows/ci.yml/badge.svg)
 # 🏀⚽ Sport Analytics Pipeline
 
 > End-to-end data pipeline for basketball and football analytics — from public API ingestion to an interactive dashboard with a content recommendation engine.
